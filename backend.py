@@ -4,7 +4,7 @@ import re
 
 
 # ==========================================
-# 1. SAMPLE JOB DATABASE
+# JOB DATABASE
 # ==========================================
 
 JOBS = [
@@ -16,17 +16,17 @@ JOBS = [
     {
         "title": "Data Analyst",
         "skills": ["python", "sql", "excel", "pandas", "data analysis"],
-        "description": "Analyse datasets and generate useful insights."
+        "description": "Analyse data and generate business insights."
     },
     {
         "title": "Machine Learning Intern",
         "skills": ["python", "pandas", "numpy", "machine learning"],
-        "description": "Work with datasets and machine learning models."
+        "description": "Work with data and machine learning models."
     },
     {
         "title": "Web Developer",
         "skills": ["html", "css", "javascript", "git"],
-        "description": "Develop and maintain web applications."
+        "description": "Develop and maintain websites."
     },
     {
         "title": "Java Developer",
@@ -40,80 +40,47 @@ JOBS = [
     },
     {
         "title": "AI Developer",
-        "skills": ["python", "numpy", "machine learning", "tensorflow"],
+        "skills": ["python", "numpy", "machine learning"],
         "description": "Develop artificial intelligence applications."
     },
     {
         "title": "Data Science Intern",
         "skills": [
-            "python", "pandas", "numpy",
-            "sql", "machine learning", "data analysis"
+            "python", "pandas", "numpy", "sql",
+            "machine learning", "data analysis"
         ],
         "description": "Explore datasets and develop predictive models."
     },
     {
         "title": "Database Developer",
         "skills": ["sql", "mysql", "database", "python"],
-        "description": "Design and manage database systems."
+        "description": "Design and manage databases."
     },
     {
         "title": "Software Developer",
         "skills": ["python", "java", "git", "sql"],
-        "description": "Develop and maintain software applications."
+        "description": "Develop and maintain software."
     }
 ]
 
 
 # ==========================================
-# 2. SKILL DATABASE
+# SKILL DATABASE
 # ==========================================
 
-KNOWN_SKILLS = [
-    "machine learning",
-    "data analysis",
-    "power bi",
-    "javascript",
-    "tensorflow",
-    "scikit-learn",
-    "artificial intelligence",
-    "deep learning",
-    "computer vision",
-    "data science",
-    "programming",
-    "database",
-    "mysql",
-    "mongodb",
-    "flask",
-    "django",
-    "streamlit",
-    "pandas",
-    "numpy",
-    "excel",
-    "python",
-    "java",
-    "c++",
-    "c programming",
-    "sql",
-    "html",
-    "css",
-    "git",
-    "github",
-    "react",
-    "communication",
-    "leadership",
-    "problem solving",
-    "teamwork"
-]
-
 KNOWN_SKILLS = sorted(
-    set(KNOWN_SKILLS),
+    set(
+        skill
+        for job in JOBS
+        for skill in job["skills"]
+    ),
     key=len,
     reverse=True
 )
 
 
 # ==========================================
-# 3. READ PDF AND DOCX
+# READ RESUME
 # ==========================================
 
 def read_resume(uploaded_file):
@@ -126,46 +93,51 @@ def read_resume(uploaded_file):
     file_data = uploaded_file.getvalue()
 
     if not file_data:
-        raise ValueError("The selected file is empty.")
+        raise ValueError("Selected file is empty.")
 
     if len(file_data) > 10 * 1024 * 1024:
-        raise ValueError("File size must be below 10 MB.")
+        raise ValueError("Maximum file size is 10 MB.")
 
+    # PDF READING
     if filename.endswith(".pdf"):
 
         from pypdf import PdfReader
 
         try:
+
             reader = PdfReader(io.BytesIO(file_data))
 
             if reader.is_encrypted:
                 raise ValueError(
-                    "This PDF is password protected. "
+                    "PDF is password protected. "
                     "Please upload an unlocked PDF."
                 )
 
-            extracted_parts = []
+            extracted_text = []
 
             for page in reader.pages:
-                extracted_parts.append(
+
+                extracted_text.append(
                     page.extract_text() or ""
                 )
 
-            text = "\n".join(extracted_parts)
+            text = "\n".join(extracted_text)
 
         except ValueError:
             raise
 
         except Exception:
             raise ValueError(
-                "Unable to read PDF. Please try another PDF file."
+                "PDF reading failed. Please try another PDF."
             )
 
+    # DOCX READING
     elif filename.endswith(".docx"):
 
         from docx import Document
 
         try:
+
             document = Document(io.BytesIO(file_data))
 
             parts = []
@@ -174,21 +146,24 @@ def read_resume(uploaded_file):
                 parts.append(paragraph.text)
 
             for table in document.tables:
+
                 for row in table.rows:
+
                     for cell in row.cells:
                         parts.append(cell.text)
 
             text = "\n".join(parts)
 
         except Exception:
+
             raise ValueError(
-                "Unable to read DOCX. Please check the document."
+                "Unable to read DOCX file."
             )
 
     else:
 
         raise ValueError(
-            "Unsupported file format. Select PDF or DOCX."
+            "Only PDF and DOCX files are supported."
         )
 
     text = re.sub(r"[ \t]+", " ", text)
@@ -196,6 +171,7 @@ def read_resume(uploaded_file):
     text = text.strip()
 
     if not text:
+
         raise ValueError(
             "No readable text found. Scanned PDFs require OCR."
         )
@@ -204,7 +180,7 @@ def read_resume(uploaded_file):
 
 
 # ==========================================
-# 4. EXTRACT SKILLS
+# EXTRACT SKILLS
 # ==========================================
 
 def extract_skills(resume_text):
@@ -228,10 +204,13 @@ def extract_skills(resume_text):
 
 
 # ==========================================
-# 5. CALCULATE RESUME SCORE
+# RESUME SCORE
 # ==========================================
 
 def calculate_score(resume_text):
+
+    if not KNOWN_SKILLS:
+        return 0
 
     found = extract_skills(resume_text)
 
@@ -243,7 +222,7 @@ def calculate_score(resume_text):
 
 
 # ==========================================
-# 6. MATCH JOBS
+# JOB MATCHING
 # ==========================================
 
 def find_matching_jobs(resume_text):
@@ -271,11 +250,17 @@ def find_matching_jobs(resume_text):
         )
 
         results.append({
+
             "title": job["title"],
+
             "description": job["description"],
+
             "match": percentage,
+
             "matched": matched,
+
             "missing": missing
+
         })
 
     results.sort(
@@ -287,7 +272,7 @@ def find_matching_jobs(resume_text):
 
 
 # ==========================================
-# 7. SKILL ANALYSIS
+# SKILL ANALYSIS
 # ==========================================
 
 def skill_analysis(resume_text):
@@ -303,89 +288,73 @@ def skill_analysis(resume_text):
 
         level = "Excellent"
 
-        message = (
-            "Your resume contains a wide range of "
-            "predefined skills."
-        )
+        message = "Your resume contains a wide range of predefined skills."
 
     elif len(found) >= 6:
 
         level = "Good"
 
-        message = (
-            "Your resume contains several relevant skills."
-        )
+        message = "Your resume contains several relevant skills."
 
     elif len(found) >= 3:
 
         level = "Intermediate"
 
-        message = (
-            "Your resume has some relevant skills. "
-            "Consider developing additional skills."
-        )
+        message = "Your resume contains some relevant skills."
 
     else:
 
         level = "Needs Improvement"
 
-        message = (
-            "Your resume contains few predefined skills. "
-            "Consider adding relevant skills you actually possess."
-        )
+        message = "Consider adding relevant skills that you actually possess."
 
     suggestions = []
 
     if "python" not in found:
-        suggestions.append(
-            "Consider learning Python programming."
-        )
+        suggestions.append("Learn Python programming.")
 
     if "sql" not in found:
-        suggestions.append(
-            "Learn SQL for database management."
-        )
+        suggestions.append("Learn SQL database management.")
 
-    if "git" not in found and "github" not in found:
-        suggestions.append(
-            "Learn Git and GitHub for project management."
-        )
+    if "git" not in found:
+        suggestions.append("Learn Git and GitHub.")
 
     if "machine learning" not in found:
-        suggestions.append(
-            "Explore machine learning fundamentals."
-        )
+        suggestions.append("Explore machine learning fundamentals.")
 
-    if "communication" not in found:
-        suggestions.append(
-            "Include relevant communication experience if applicable."
-        )
+    if "pandas" not in found:
+        suggestions.append("Learn Pandas for data analysis.")
 
     if not suggestions:
+
         suggestions.append(
             "Continue improving your skills through practical projects."
         )
 
     return {
+
         "found": found,
+
         "missing": missing,
+
         "level": level,
+
         "message": message,
+
         "suggestions": suggestions
+
     }
 
 
 # ==========================================
-# 8. EXPERIENCE ESTIMATION
+# EXPERIENCE ESTIMATION
 # ==========================================
 
 def extract_experience(resume_text):
 
-    text = resume_text.lower()
-
     matches = re.findall(
         r"(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)",
-        text
+        resume_text.lower()
     )
 
     if matches:
@@ -398,7 +367,7 @@ def extract_experience(resume_text):
 
 
 # ==========================================
-# 9. GENERATE FULL REPORT
+# FULL ANALYSIS REPORT
 # ==========================================
 
 def generate_report(resume_text, filename):
@@ -423,7 +392,8 @@ def generate_report(resume_text, filename):
     report.append(str(score) + "%")
 
     report.append("\nSKILL ANALYSIS")
-    report.append("Skill Level: " + skills["level"])
+
+    report.append("Level: " + skills["level"])
 
     report.append(
         "Skills Found: " + ", ".join(skills["found"])
@@ -436,7 +406,7 @@ def generate_report(resume_text, filename):
     report.append("\nEXPERIENCE ESTIMATION")
 
     report.append(
-        str(experience) + " years (estimated from resume text)"
+        str(experience) + " years (estimated)"
     )
 
     report.append("\nJOB MATCHING")
@@ -460,12 +430,13 @@ def generate_report(resume_text, filename):
     report.append("\nIMPROVEMENT SUGGESTIONS")
 
     for suggestion in skills["suggestions"]:
+
         report.append("- " + suggestion)
 
     report.append("\n" + "=" * 45)
 
     report.append(
-        "Note: This is rule-based analysis using sample job profiles."
+        "Analysis is based on predefined skills and sample jobs."
     )
 
     return "\n".join(report)
