@@ -11,7 +11,7 @@ from backend import (
 
 
 # ==========================================
-# PAGE CONFIGURATION
+# 1. PAGE CONFIGURATION
 # ==========================================
 
 st.set_page_config(
@@ -23,28 +23,45 @@ st.set_page_config(
 
 
 # ==========================================
-# SESSION STATE
+# 2. SESSION DATA
 # ==========================================
 
-defaults = {
-    "resume_text": "",
-    "resume_filename": "",
-    "resume_score": None,
-    "matching_jobs": None,
-    "skills": None,
-    "report": None,
-    "upload_key": 0,
-    "uploaded": False
-}
+def initialize_state():
 
-for key, value in defaults.items():
+    defaults = {
+        "resume_text": "",
+        "resume_filename": "",
+        "resume_score": None,
+        "matching_jobs": None,
+        "skills": None,
+        "report": None,
+        "upload_key": 0
+    }
 
-    if key not in st.session_state:
-        st.session_state[key] = value
+    for key, value in defaults.items():
+
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+
+initialize_state()
 
 
 # ==========================================
-# SIDEBAR
+# 3. RESET FUNCTION
+# ==========================================
+
+def reset_application():
+
+    next_key = st.session_state.upload_key + 1
+
+    st.session_state.clear()
+
+    st.session_state.upload_key = next_key
+
+
+# ==========================================
+# 4. SIDEBAR
 # ==========================================
 
 with st.sidebar:
@@ -57,183 +74,185 @@ with st.sidebar:
 
     st.subheader("Navigation")
 
-    st.info(
-        "Upload your resume and use the analysis "
-        "tools to explore your skills and job matches."
-    )
+    st.write("🏠 Dashboard")
+    st.write("📤 Resume Upload")
+    st.write("📊 Resume Score")
+    st.write("🧠 Skill Analysis")
+    st.write("🎯 Job Matching")
+    st.write("📑 Analysis Report")
 
     st.divider()
 
-    st.subheader("Supported Formats")
+    st.subheader("Supported Files")
 
     st.write("📕 PDF")
     st.write("📘 DOCX")
 
     st.divider()
 
-    st.caption("Developed using Python and Streamlit.")
+    st.caption("Powered by Python and Streamlit")
 
 
 # ==========================================
-# MAIN HEADER
+# 5. MAIN HEADER
 # ==========================================
 
 st.title("📄 AI Based Resume Analyser")
 
 st.subheader(
-    "Understand your resume. Discover your potential."
+    "Discover your skills. Improve your resume. "
+    "Explore career opportunities."
 )
 
 st.write(
-    "Analyse your technical skills, calculate skill coverage, "
-    "discover suitable job opportunities and identify areas "
-    "for improvement."
+    "An intelligent resume analysis application "
+    "that extracts resume information, identifies "
+    "technical skills and recommends suitable jobs."
 )
 
 st.divider()
 
 
 # ==========================================
-# DASHBOARD METRICS
+# 6. DASHBOARD
 # ==========================================
+
+st.header("📊 Dashboard")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric(
-    "Resume Status",
-    "Uploaded" if st.session_state.resume_text else "Not Uploaded"
-)
+with col1:
 
-col2.metric(
-    "Resume Score",
-    str(st.session_state.resume_score) + "%"
-    if st.session_state.resume_score is not None
-    else "Not Calculated"
-)
+    status = (
+        "Uploaded"
+        if st.session_state.resume_text
+        else "Not Uploaded"
+    )
 
-col3.metric(
-    "Job Recommendations",
-    len(st.session_state.matching_jobs)
-    if st.session_state.matching_jobs is not None
-    else 0
-)
+    st.metric("Resume Status", status)
+
+with col2:
+
+    score = st.session_state.resume_score
+
+    st.metric(
+        "Resume Score",
+        str(score) + "%"
+        if score is not None
+        else "Not Calculated"
+    )
+
+with col3:
+
+    jobs = st.session_state.matching_jobs
+
+    st.metric(
+        "Job Recommendations",
+        len(jobs) if jobs is not None else 0
+    )
 
 st.divider()
 
 
 # ==========================================
-# UPLOAD RESUME
+# 7. RESUME UPLOAD
 # ==========================================
 
-st.header("1. Upload Your Resume")
+st.header("📤 1. Upload Your Resume")
+
+st.info(
+    "Select a PDF or DOCX resume. "
+    "Maximum supported file size: 10 MB."
+)
 
 uploaded_file = st.file_uploader(
-    "Select your resume in PDF or DOCX format",
+    "Choose your resume",
     type=["pdf", "docx"],
+    accept_multiple_files=False,
     key="resume_upload_" + str(st.session_state.upload_key)
 )
 
 if uploaded_file is not None:
 
     st.success(
-        "Selected File: " + uploaded_file.name
+        "File selected: " + uploaded_file.name
+    )
+
+    st.write(
+        "File size: "
+        + str(round(uploaded_file.size / 1024, 2))
+        + " KB"
     )
 
 
 # ==========================================
-# TOOL BUTTONS
+# 8. RESUME PROCESSING
 # ==========================================
 
-st.header("2. Resume Analysis Tools")
+if st.button(
+    "📥 Upload and Read Resume",
+    use_container_width=True
+):
 
-col1, col2 = st.columns(2)
+    if uploaded_file is None:
 
-# ------------------------------------------
-# BUTTON 1: UPLOAD RESUME
-# ------------------------------------------
+        st.warning("Please select a PDF or DOCX file first.")
 
-with col1:
+    else:
 
-    if st.button(
-        "📂 Upload Resume",
-        use_container_width=True
-    ):
+        try:
 
-        if uploaded_file is None:
+            with st.spinner("Processing your resume..."):
 
-            st.warning("Please select a resume first.")
+                extracted_text = read_resume(uploaded_file)
 
-        else:
+            st.session_state.resume_text = extracted_text
 
             st.session_state.resume_filename = uploaded_file.name
-            st.session_state.resume_text = ""
+
             st.session_state.resume_score = None
+
             st.session_state.matching_jobs = None
+
             st.session_state.skills = None
+
             st.session_state.report = None
-            st.session_state.uploaded = True
 
             st.success(
-                "Resume selected successfully. Now click Read Resume File."
+                "Resume uploaded and processed successfully!"
+            )
+
+        except Exception as error:
+
+            st.error(
+                "Resume processing failed: " + str(error)
             )
 
 
-# ------------------------------------------
-# BUTTON 2: READ RESUME FILE
-# ------------------------------------------
-
-with col2:
-
-    if st.button(
-        "📖 Read Resume File",
-        use_container_width=True
-    ):
-
-        if uploaded_file is None:
-
-            st.warning("Please select a resume first.")
-
-        else:
-
-            try:
-
-                with st.spinner("Reading your resume..."):
-
-                    extracted_text = read_resume(uploaded_file)
-
-                st.session_state.resume_text = extracted_text
-                st.session_state.resume_filename = uploaded_file.name
-                st.session_state.resume_score = None
-                st.session_state.matching_jobs = None
-                st.session_state.skills = None
-                st.session_state.report = None
-                st.session_state.uploaded = True
-
-                st.success(
-                    "Resume successfully read and processed!"
-                )
-
-            except Exception as error:
-
-                st.error(str(error))
+st.divider()
 
 
-# ------------------------------------------
-# BUTTON 3: RESUME SCORE
-# ------------------------------------------
+# ==========================================
+# 9. RESUME TOOLS
+# ==========================================
+
+st.header("🛠️ 2. Resume Analysis Tools")
 
 col1, col2 = st.columns(2)
+
+
+# RESUME SCORE
 
 with col1:
 
     if st.button(
-        "📊 Calculate Resume Score",
+        "📊 Resume Score",
         use_container_width=True
     ):
 
         if not st.session_state.resume_text:
 
-            st.warning("Please read your resume first.")
+            st.warning("Upload and read your resume first.")
 
         else:
 
@@ -241,12 +260,10 @@ with col1:
                 st.session_state.resume_text
             )
 
-            st.success("Resume score calculated successfully!")
+            st.success("Resume score calculated!")
 
 
-# ------------------------------------------
-# BUTTON 4: FIND MATCHING JOBS
-# ------------------------------------------
+# JOB MATCHING
 
 with col2:
 
@@ -257,7 +274,7 @@ with col2:
 
         if not st.session_state.resume_text:
 
-            st.warning("Please read your resume first.")
+            st.warning("Upload and read your resume first.")
 
         else:
 
@@ -268,11 +285,10 @@ with col2:
             st.success("Job matching completed!")
 
 
-# ------------------------------------------
-# BUTTON 5: SKILL ANALYSIS
-# ------------------------------------------
-
 col1, col2 = st.columns(2)
+
+
+# SKILL ANALYSIS
 
 with col1:
 
@@ -283,7 +299,7 @@ with col1:
 
         if not st.session_state.resume_text:
 
-            st.warning("Please read your resume first.")
+            st.warning("Upload and read your resume first.")
 
         else:
 
@@ -294,9 +310,7 @@ with col1:
             st.success("Skill analysis completed!")
 
 
-# ------------------------------------------
-# BUTTON 6: FULL ANALYSIS REPORT
-# ------------------------------------------
+# FULL REPORT
 
 with col2:
 
@@ -307,7 +321,7 @@ with col2:
 
         if not st.session_state.resume_text:
 
-            st.warning("Please read your resume first.")
+            st.warning("Upload and read your resume first.")
 
         else:
 
@@ -319,20 +333,14 @@ with col2:
             st.success("Full report generated!")
 
 
-# ------------------------------------------
-# BUTTON 7: CLEAR / RESET
-# ------------------------------------------
+# CLEAR / RESET
 
 if st.button(
     "🔄 Clear / Reset Everything",
     use_container_width=True
 ):
 
-    next_upload_key = st.session_state.upload_key + 1
-
-    st.session_state.clear()
-
-    st.session_state.upload_key = next_upload_key
+    reset_application()
 
     st.rerun()
 
@@ -341,42 +349,41 @@ st.divider()
 
 
 # ==========================================
-# RESUME RESULTS
+# 10. RESULTS SECTION
 # ==========================================
 
-st.header("3. Resume Results")
+st.header("📋 3. Analysis Results")
 
 
-# ------------------------------------------
+# ==========================================
 # EXTRACTED RESUME
-# ------------------------------------------
+# ==========================================
 
 if st.session_state.resume_text:
 
-    with st.expander(
-        "📄 View Extracted Resume Text",
-        expanded=False
-    ):
+    st.subheader("📄 Extracted Resume")
 
-        st.caption(
-            "File: " + st.session_state.resume_filename
-        )
+    st.caption(
+        "File: " + st.session_state.resume_filename
+    )
+
+    with st.expander("View Resume Text", expanded=False):
 
         st.text_area(
-            "Extracted Information",
+            "Resume Content",
             value=st.session_state.resume_text,
             height=250,
             disabled=True
         )
 
 
-# ------------------------------------------
-# RESUME SCORE DISPLAY
-# ------------------------------------------
+# ==========================================
+# RESUME SCORE
+# ==========================================
 
 if st.session_state.resume_score is not None:
 
-    st.subheader("⭐ Resume Skill Coverage Score")
+    st.subheader("⭐ Resume Skill Coverage")
 
     score = st.session_state.resume_score
 
@@ -384,33 +391,36 @@ if st.session_state.resume_score is not None:
 
     col1, col2 = st.columns(2)
 
-    col1.metric(
-        "Skill Coverage",
-        str(score) + "%"
-    )
+    with col1:
 
-    if score >= 70:
+        st.metric(
+            "Skill Coverage",
+            str(score) + "%"
+        )
 
-        col2.success("Good skill coverage")
+    with col2:
 
-    elif score >= 40:
+        if score >= 70:
 
-        col2.info("Moderate skill coverage")
+            st.success("Good skill coverage")
 
-    else:
+        elif score >= 40:
 
-        col2.warning("More relevant skills may be needed")
+            st.info("Moderate skill coverage")
+
+        else:
+
+            st.warning("More relevant skills may be needed")
 
     st.caption(
-        "The score measures the percentage of predefined "
-        "job-related skills found in your resume. It is not "
-        "an overall resume quality or hiring score."
+        "This score represents the percentage of predefined "
+        "skills detected in the resume. It is not a hiring score."
     )
 
 
-# ------------------------------------------
-# SKILL ANALYSIS DISPLAY
-# ------------------------------------------
+# ==========================================
+# SKILL ANALYSIS
+# ==========================================
 
 if st.session_state.skills is not None:
 
@@ -420,9 +430,7 @@ if st.session_state.skills is not None:
 
     st.subheader("🧠 Detailed Skill Analysis")
 
-    st.write(
-        "**Skill Level:** " + skills["level"]
-    )
+    st.write("Skill Level: " + skills["level"])
 
     st.info(skills["message"])
 
@@ -430,11 +438,12 @@ if st.session_state.skills is not None:
 
     with col1:
 
-        st.markdown("#### ✅ Skills Found")
+        st.markdown("### ✅ Skills Found")
 
         if skills["found"]:
 
             for skill in skills["found"]:
+
                 st.write("🟢 " + skill.title())
 
         else:
@@ -443,37 +452,32 @@ if st.session_state.skills is not None:
 
     with col2:
 
-        st.markdown("#### 📌 Skills Not Found")
+        st.markdown("### 📌 Skills Not Found")
 
-        if skills["missing"]:
+        for skill in skills["missing"]:
 
-            for skill in skills["missing"]:
-                st.write("⚪ " + skill.title())
+            st.write("⚪ " + skill.title())
 
-        else:
-
-            st.write("All predefined skills detected.")
-
-    st.markdown("#### 💡 Improvement Suggestions")
+    st.markdown("### 💡 Improvement Suggestions")
 
     for suggestion in skills["suggestions"]:
 
         st.write("• " + suggestion)
 
 
-# ------------------------------------------
-# JOB MATCHING DISPLAY
-# ------------------------------------------
+# ==========================================
+# JOB MATCHING RESULTS
+# ==========================================
 
 if st.session_state.matching_jobs is not None:
 
     st.divider()
 
-    st.subheader("🎯 Matching Job Opportunities")
+    st.subheader("🎯 Job Recommendations")
 
     st.write(
-        "These recommendations are ranked according "
-        "to the skills found in your resume."
+        "The following jobs are ranked according "
+        "to the skills detected in your resume."
     )
 
     for index, job in enumerate(
@@ -484,13 +488,16 @@ if st.session_state.matching_jobs is not None:
         with st.container(border=True):
 
             st.markdown(
-                "### " + str(index) + ". " + job["title"]
+                "### "
+                + str(index)
+                + ". "
+                + job["title"]
             )
 
             st.write(job["description"])
 
             st.metric(
-                "Job Match Percentage",
+                "Job Match",
                 str(job["match"]) + "%"
             )
 
@@ -500,46 +507,42 @@ if st.session_state.matching_jobs is not None:
 
             if job["matched"]:
 
-                st.success(
-                    ", ".join(job["matched"])
-                )
+                st.success(", ".join(job["matched"]))
 
             else:
 
-                st.write("No matching skills detected.")
+                st.write("No matching skills found.")
 
             st.markdown("**Missing Skills**")
 
             if job["missing"]:
 
-                st.warning(
-                    ", ".join(job["missing"])
-                )
+                st.warning(", ".join(job["missing"]))
 
             else:
 
                 st.success("All required skills detected!")
 
 
-# ------------------------------------------
-# FULL REPORT DISPLAY
-# ------------------------------------------
+# ==========================================
+# FULL ANALYSIS REPORT
+# ==========================================
 
 if st.session_state.report is not None:
 
     st.divider()
 
-    st.subheader("📑 Complete Resume Analysis Report")
+    st.subheader("📑 Full Analysis Report")
 
     st.text_area(
-        "Generated Report",
+        "Report",
         value=st.session_state.report,
         height=400,
         disabled=True
     )
 
     st.download_button(
-        label="⬇️ Download Full Analysis Report",
+        "⬇️ Download Analysis Report",
         data=st.session_state.report,
         file_name="Resume_Analysis_Report.txt",
         mime="text/plain",
@@ -548,19 +551,21 @@ if st.session_state.report is not None:
 
 
 # ==========================================
-# FOOTER
+# 11. FOOTER
 # ==========================================
 
 st.divider()
 
 st.caption(
-    "AI Based Resume Analyser | "
-    "Developed using Python | "
-    "Resume Parsing • Skill Analysis • Job Matching"
+    "AI Based Resume Analyser | Developed using Python"
 )
 
 st.caption(
-    "Disclaimer: This application provides basic "
-    "rule-based resume analysis and sample job recommendations. "
-    "It does not guarantee employment."
+    "Resume Parsing | Skill Analysis | Resume Scoring | Job Matching"
+)
+
+st.caption(
+    "Disclaimer: This application uses predefined skills "
+    "and sample job profiles. Its recommendations are "
+    "informational and do not guarantee employment."
 )
